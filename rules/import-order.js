@@ -224,10 +224,22 @@ module.exports = {
                         });
                     }
 
-                    if (currentGroupIndex !== previousGroupIndex && linesBetween < 1) {
+                    if (currentGroupIndex !== previousGroupIndex && linesBetween === 0) {
                         context.report({
-                            fix: fixer => {
-                                //
+                            /**
+                             * @function
+                             * @param {object} fixer
+                             * @param {function} fixer.insertTextBeforeRange
+                             * @returns {object}
+                             */
+                            fix: ({ insertTextBeforeRange }) => {
+                                /**
+                                 * @constant
+                                 * @type {number[]}
+                                 */
+                                const { range } = node;
+
+                                return insertTextBeforeRange(range, '\n');
                             },
                             message: `There must be an empty line between ${currentGroupName} imports and ${previousGroupName} imports`,
                             node
