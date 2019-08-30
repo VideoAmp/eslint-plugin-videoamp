@@ -248,8 +248,30 @@ module.exports = {
 
                     if (currentGroupIndex === previousGroupIndex && linesBetween !== 0) {
                         context.report({
-                            fix: fixer => {
-                                //
+                            /**
+                             * @function
+                             * @param {object} fixer
+                             * @param {function} fixer.replaceTextRange
+                             * @returns {object}
+                             */
+                            fix: ({ replaceTextRange }) => {
+                                /**
+                                 * @constant
+                                 * @type {number[]}
+                                 */
+                                const { range: [_, previousEnd] } = previousImportDeclaration;
+                                /**
+                                 * @constant
+                                 * @type {number[]}
+                                 */
+                                const { range: [currentStart] } = node;
+                                /**
+                                 * @constant
+                                 * @type {number[]}
+                                 */
+                                const range = [previousEnd, currentStart];
+
+                                return replaceTextRange(range, '\n');
                             },
                             message: `There must be no empty lines within the ${currentGroupName} import group`,
                             node
