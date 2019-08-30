@@ -140,6 +140,14 @@ const getGroupIndex = ({ source: { value } }, path) => {
  * @type {object}
  */
 module.exports = {
+    meta: {
+        docs: {
+            recommended: true,
+        },
+        fixable: "code",
+        schema: [],
+        type: "layout",
+    },
     /**
      * @function
      * @param {object} context
@@ -208,6 +216,9 @@ module.exports = {
 
                     if (currentGroupIndex < previousGroupIndex) {
                         context.report({
+                            fix: fixer => {
+                                //
+                            },
                             message: `${currentGroupName} imports must be declared before ${previousGroupName} imports`,
                             node
                         });
@@ -215,6 +226,9 @@ module.exports = {
 
                     if (currentGroupIndex !== previousGroupIndex && linesBetween < 1) {
                         context.report({
+                            fix: fixer => {
+                                //
+                            },
                             message: `There must be an empty line between ${currentGroupName} imports and ${previousGroupName} imports`,
                             node
                         });
@@ -222,6 +236,9 @@ module.exports = {
 
                     if (currentGroupIndex === previousGroupIndex && linesBetween !== 0) {
                         context.report({
+                            fix: fixer => {
+                                //
+                            },
                             message: `There must be no empty lines within the ${currentGroupName} import group`,
                             node
                         });
@@ -229,6 +246,44 @@ module.exports = {
 
                     if (currentGroupIndex === previousGroupIndex && currentSource < previousSource) {
                         context.report({
+                            /**
+                             * @function
+                             * @param {object} fixer
+                             * @param {function} fixer.replaceTextRange
+                             * @returns {object[]}
+                             */
+                            fix: ({ replaceTextRange }) => {
+                                /**
+                                 * @constant
+                                 * @type {object}
+                                 */
+                                const sourceCode = context.getSourceCode();
+                                /**
+                                 * @constant
+                                 * @type {string}
+                                 */
+                                const previousText = sourceCode.getText(previousImportDeclaration);
+                                /**
+                                 * @constant
+                                 * @type {string}
+                                 */
+                                const currentText = sourceCode.getText(node);
+                                /**
+                                 * @constant
+                                 * @type {number[]}
+                                 */
+                                const { range: previousRange } = previousImportDeclaration;
+                                /**
+                                 * @constant
+                                 * @type {number[]}
+                                 */
+                                const { range: currentRange } = node;
+
+                                return [
+                                    replaceTextRange(previousRange, currentText),
+                                    replaceTextRange(currentRange, previousText),
+                                ];
+                            },
                             message: `Import declarations within the ${currentGroupName} import group must be ordered alphabetically`,
                             node
                         });
@@ -238,5 +293,5 @@ module.exports = {
                 previousImportDeclaration = node;
             }
         };
-    }
+    },
 };
