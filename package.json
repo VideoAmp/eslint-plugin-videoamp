@@ -1,0 +1,12 @@
+{
+  "dependencies": {
+    "eslint-import-resolver-node": "^0.3.2",
+    "eslint-module-utils": "^2.4.1"
+  },
+  "main": "index.js",
+  "name": "eslint-plugin-videoamp",
+  "peerDependencies": {
+    "eslint": "2.x - 5.x"
+  },
+  "version": "0.0.1"
+}
