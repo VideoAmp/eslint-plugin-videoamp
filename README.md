@@ -17,6 +17,5 @@ In your _eslintrc.json_:
 
 ## Todo
 
-- add autofix support
 - create tests
 - support configuration

@@ -85,17 +85,6 @@ const isThirdParty = (source, path) =>
 const isFirstParty = source =>
     firstPartyPackages.includes(getPackageName(source));
 /**
- * not in node_modules and file extension not present
- * @constant
- * @function
- * @param {string} source
- * @param {string} path
- * @returns {boolean}
- */
-const isLocal = (source, path) =>
-    !thirdPartyDirectories.some(isInDirectory(source, path)) &&
-    !Boolean(source.match(/\.\w+$/));
-/**
  * not in node_modules and file extension present
  * @constant
  * @function
@@ -135,6 +124,109 @@ const getGroupIndex = ({ source: { value } }, path) => {
 
     return 3;
 };
+
+/**
+ * @constant
+ * @function
+ * @param {object} currentNode
+ * @param {object} previousNode
+ * @param {object} context
+ * @returns {function}
+ */
+const fixerSwapImportDeclarations = (currentNode, previousNode, context) =>
+    /**
+     * @function
+     * @param {object} fixer
+     * @param {function} fixer.replaceTextRange
+     * @returns {object[]}
+     */
+    ({ replaceTextRange }) => {
+        /**
+         * @constant
+         * @type {object}
+         */
+        const sourceCode = context.getSourceCode();
+        /**
+         * @constant
+         * @type {string}
+         */
+        const previousText = sourceCode.getText(previousNode);
+        /**
+         * @constant
+         * @type {string}
+         */
+        const currentText = sourceCode.getText(currentNode);
+        /**
+         * @constant
+         * @type {number[]}
+         */
+        const { range: previousRange } = previousNode;
+        /**
+         * @constant
+         * @type {number[]}
+         */
+        const { range: currentRange } = currentNode;
+
+        return [
+            replaceTextRange(previousRange, currentText),
+            replaceTextRange(currentRange, previousText),
+        ];
+    };
+/**
+ * @constant
+ * @function
+ * @param {object} currentNode
+ * @param {object} previousNode
+ * @returns {function}
+ */
+const fixerRemoveEmptyLines = (currentNode, previousNode) =>
+    /**
+     * @function
+     * @param {object} fixer
+     * @param {function} fixer.replaceTextRange
+     * @returns {object}
+     */
+    ({ replaceTextRange }) => {
+        /**
+         * @constant
+         * @type {number[]}
+         */
+        const { range: [_, previousEnd] } = previousNode;
+        /**
+         * @constant
+         * @type {number[]}
+         */
+        const { range: [currentStart] } = currentNode;
+        /**
+         * @constant
+         * @type {number[]}
+         */
+        const range = [previousEnd, currentStart];
+
+        return replaceTextRange(range, '\n');
+    };
+/**
+ * @constant
+ * @function
+ * @param {object} currentNode
+ * @returns {function}
+ */
+const fixerAddEmptyLine = (currentNode) =>
+    /**
+     * @function
+     * @param {object} fixer
+     * @param {function} fixer.insertTextBeforeRange
+     * @returns {object}
+     */
+    ({ insertTextBeforeRange }) => {
+        /**
+         * @constant
+         * @type {number[]}
+         */
+        const { range } = currentNode;
+
+        return insertTextBeforeRange(range, '\n');
+    };
 
 /**
  * @type {object}
@@ -216,9 +308,7 @@ module.exports = {
 
                     if (currentGroupIndex < previousGroupIndex) {
                         context.report({
-                            fix: fixer => {
-                                //
-                            },
+                            fix: fixerSwapImportDeclarations(node, previousImportDeclaration, context),
                             message: `${currentGroupName} imports must be declared before ${previousGroupName} imports`,
                             node
                         });
@@ -226,21 +316,7 @@ module.exports = {
 
                     if (currentGroupIndex !== previousGroupIndex && linesBetween === 0) {
                         context.report({
-                            /**
-                             * @function
-                             * @param {object} fixer
-                             * @param {function} fixer.insertTextBeforeRange
-                             * @returns {object}
-                             */
-                            fix: ({ insertTextBeforeRange }) => {
-                                /**
-                                 * @constant
-                                 * @type {number[]}
-                                 */
-                                const { range } = node;
-
-                                return insertTextBeforeRange(range, '\n');
-                            },
+                            fix: fixerAddEmptyLine(node),
                             message: `There must be an empty line between ${currentGroupName} imports and ${previousGroupName} imports`,
                             node
                         });
@@ -248,31 +324,7 @@ module.exports = {
 
                     if (currentGroupIndex === previousGroupIndex && linesBetween !== 0) {
                         context.report({
-                            /**
-                             * @function
-                             * @param {object} fixer
-                             * @param {function} fixer.replaceTextRange
-                             * @returns {object}
-                             */
-                            fix: ({ replaceTextRange }) => {
-                                /**
-                                 * @constant
-                                 * @type {number[]}
-                                 */
-                                const { range: [_, previousEnd] } = previousImportDeclaration;
-                                /**
-                                 * @constant
-                                 * @type {number[]}
-                                 */
-                                const { range: [currentStart] } = node;
-                                /**
-                                 * @constant
-                                 * @type {number[]}
-                                 */
-                                const range = [previousEnd, currentStart];
-
-                                return replaceTextRange(range, '\n');
-                            },
+                            fix: fixerRemoveEmptyLines(node, previousImportDeclaration),
                             message: `There must be no empty lines within the ${currentGroupName} import group`,
                             node
                         });
@@ -280,44 +332,7 @@ module.exports = {
 
                     if (currentGroupIndex === previousGroupIndex && currentSource < previousSource) {
                         context.report({
-                            /**
-                             * @function
-                             * @param {object} fixer
-                             * @param {function} fixer.replaceTextRange
-                             * @returns {object[]}
-                             */
-                            fix: ({ replaceTextRange }) => {
-                                /**
-                                 * @constant
-                                 * @type {object}
-                                 */
-                                const sourceCode = context.getSourceCode();
-                                /**
-                                 * @constant
-                                 * @type {string}
-                                 */
-                                const previousText = sourceCode.getText(previousImportDeclaration);
-                                /**
-                                 * @constant
-                                 * @type {string}
-                                 */
-                                const currentText = sourceCode.getText(node);
-                                /**
-                                 * @constant
-                                 * @type {number[]}
-                                 */
-                                const { range: previousRange } = previousImportDeclaration;
-                                /**
-                                 * @constant
-                                 * @type {number[]}
-                                 */
-                                const { range: currentRange } = node;
-
-                                return [
-                                    replaceTextRange(previousRange, currentText),
-                                    replaceTextRange(currentRange, previousText),
-                                ];
-                            },
+                            fix: fixerSwapImportDeclarations(node, previousImportDeclaration, context),
                             message: `Import declarations within the ${currentGroupName} import group must be ordered alphabetically`,
                             node
                         });
