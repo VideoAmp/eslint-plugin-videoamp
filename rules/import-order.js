@@ -1,17 +1,5 @@
-/**
- * @see https://videoamp.atlassian.net/wiki/spaces/EN2/pages/1084555358/2019-07-09+FE+Guild+Meeting
- */
-
-/**
- * @constant
- * @function
- */
 const resolve = require("eslint-module-utils/resolve").default;
 
-/**
- * @constant
- * @type {string[]}
- */
 const groupNames = [
     "React",
     "Third-party",
@@ -19,218 +7,62 @@ const groupNames = [
     "Local JS",
     "Local non-JS"
 ];
-/**
- * @constant
- * @type {string[]}
- */
 const reactPackages = ["react", "react-dom"];
-/**
- * @constant
- * @type {string[]}
- */
-const firstPartyPackages = ["@preamp", "@videoamp"];
-/**
- * @constant
- * @type {string[]}
- */
+const firstPartyPackages = ["@preamp", "@videoamp", "@videoamp-private"];
 const thirdPartyDirectories = ["node_modules"];
 
-/**
- * everything before the first slash, if present
- * @constant
- * @function
- * @param {string} source
- * @returns {string}
- */
 const getPackageName = source => source.match(/^[^\/]+/)[0];
-/**
- * @constant
- * @function
- * @param {string} source
- * @param {string} path
- * @returns {function}
- */
-const isInDirectory = (source, path) =>
-    /**
-     * @param {string} directory
-     * @returns {boolean}
-     */
-    directory => path.includes(`${directory}/${source}`);
-/**
- * in whitelist
- * @constant
- * @function
- * @param {string} source
- * @returns {boolean}
- */
+const isInDirectory = (source, path) => directory => path.includes(`${directory}/${source}`);
 const isReact = source => reactPackages.includes(getPackageName(source));
-/**
- * in node_modules and not first-party
- * @constant
- * @function
- * @param {string} source
- * @param {string} path
- * @returns {boolean}
- */
-const isThirdParty = (source, path) =>
-    thirdPartyDirectories.some(isInDirectory(source, path)) &&
-    !isFirstParty(source);
-/**
- * in whitelist
- * @constant
- * @function
- * @param {string} source
- * @returns {boolean}
- */
-const isFirstParty = source =>
-    firstPartyPackages.includes(getPackageName(source));
-/**
- * not in node_modules and file extension present
- * @constant
- * @function
- * @param {string} source
- * @param {string} path
- * @returns {boolean}
- */
-const isLocalNonJs = (source, path) =>
-    !thirdPartyDirectories.some(isInDirectory(source, path)) &&
-    Boolean(source.match(/\.\w+$/));
+const isThirdParty = (source, path) => thirdPartyDirectories.some(isInDirectory(source, path)) && !isFirstParty(source);
+const isFirstParty = source => firstPartyPackages.includes(getPackageName(source));
+const isLocalNonJs = (source, path) => !thirdPartyDirectories.some(isInDirectory(source, path)) && Boolean(source.match(/\.\w+$/));
+const getGroupIndex = (source, context) => {
+    const path = resolve(source, context) || "";
 
-/**
- * @constant
- * @function
- * @param {object} node
- * @param {object} node.source
- * @param {string} node.source.value
- * @param {string} path
- * @returns {number}
- */
-const getGroupIndex = ({ source: { value } }, path) => {
-    if (isReact(value)) {
+    if (isReact(source)) {
         return 0;
     }
 
-    if (isThirdParty(value, path)) {
+    if (isThirdParty(source, path)) {
         return 1;
     }
 
-    if (isFirstParty(value)) {
+    if (isFirstParty(source)) {
         return 2;
     }
 
-    if (isLocalNonJs(value, path)) {
+    if (isLocalNonJs(source, path)) {
         return 4;
     }
 
     return 3;
 };
+const fixerSwapImportDeclarations = (currentNode, previousNode, context) => ({ replaceTextRange }) => {
+    const sourceCode = context.getSourceCode();
+    const previousText = sourceCode.getText(previousNode);
+    const currentText = sourceCode.getText(currentNode);
+    const { range: previousRange } = previousNode;
+    const { range: currentRange } = currentNode;
 
-/**
- * @constant
- * @function
- * @param {object} currentNode
- * @param {object} previousNode
- * @param {object} context
- * @returns {function}
- */
-const fixerSwapImportDeclarations = (currentNode, previousNode, context) =>
-    /**
-     * @function
-     * @param {object} fixer
-     * @param {function} fixer.replaceTextRange
-     * @returns {object[]}
-     */
-    ({ replaceTextRange }) => {
-        /**
-         * @constant
-         * @type {object}
-         */
-        const sourceCode = context.getSourceCode();
-        /**
-         * @constant
-         * @type {string}
-         */
-        const previousText = sourceCode.getText(previousNode);
-        /**
-         * @constant
-         * @type {string}
-         */
-        const currentText = sourceCode.getText(currentNode);
-        /**
-         * @constant
-         * @type {number[]}
-         */
-        const { range: previousRange } = previousNode;
-        /**
-         * @constant
-         * @type {number[]}
-         */
-        const { range: currentRange } = currentNode;
+    return [
+        replaceTextRange(previousRange, currentText),
+        replaceTextRange(currentRange, previousText),
+    ];
+};
+const fixerRemoveEmptyLines = (currentNode, previousNode) => ({ replaceTextRange }) => {
+    const { range: [_, previousEnd] } = previousNode;
+    const { range: [currentStart] } = currentNode;
+    const range = [previousEnd, currentStart];
 
-        return [
-            replaceTextRange(previousRange, currentText),
-            replaceTextRange(currentRange, previousText),
-        ];
-    };
-/**
- * @constant
- * @function
- * @param {object} currentNode
- * @param {object} previousNode
- * @returns {function}
- */
-const fixerRemoveEmptyLines = (currentNode, previousNode) =>
-    /**
-     * @function
-     * @param {object} fixer
-     * @param {function} fixer.replaceTextRange
-     * @returns {object}
-     */
-    ({ replaceTextRange }) => {
-        /**
-         * @constant
-         * @type {number[]}
-         */
-        const { range: [_, previousEnd] } = previousNode;
-        /**
-         * @constant
-         * @type {number[]}
-         */
-        const { range: [currentStart] } = currentNode;
-        /**
-         * @constant
-         * @type {number[]}
-         */
-        const range = [previousEnd, currentStart];
+    return replaceTextRange(range, '\n');
+};
+const fixerAddEmptyLine = (currentNode) => ({ insertTextBeforeRange }) => {
+    const { range } = currentNode;
 
-        return replaceTextRange(range, '\n');
-    };
-/**
- * @constant
- * @function
- * @param {object} currentNode
- * @returns {function}
- */
-const fixerAddEmptyLine = (currentNode) =>
-    /**
-     * @function
-     * @param {object} fixer
-     * @param {function} fixer.insertTextBeforeRange
-     * @returns {object}
-     */
-    ({ insertTextBeforeRange }) => {
-        /**
-         * @constant
-         * @type {number[]}
-         */
-        const { range } = currentNode;
+    return insertTextBeforeRange(range, '\n');
+};
 
-        return insertTextBeforeRange(range, '\n');
-    };
-
-/**
- * @type {object}
- */
 module.exports = {
     meta: {
         docs: {
@@ -240,71 +72,19 @@ module.exports = {
         schema: [],
         type: "layout",
     },
-    /**
-     * @function
-     * @param {object} context
-     * @param {function} context.report
-     * @returns {object}
-     */
     create: context => {
-        /**
-         * @type {?object}
-         */
         let previousImportDeclaration = null;
 
         return {
-            /**
-             * @function
-             * @param {object} node
-             * @param {object} node.source
-             * @param {string} node.source.value
-             */
             ImportDeclaration: node => {
                 if (previousImportDeclaration) {
-                    /**
-                     * @constant
-                     * @type {string}
-                     */
                     const currentSource = node.source.value;
-                    /**
-                     * @constant
-                     * @type {string}
-                     */
-                    const previousSource = previousImportDeclaration.source.value;
-                    /**
-                     * @constant
-                     * @type {string}
-                     */
-                    const path = resolve(currentSource, context) || "";
-                    /**
-                     * @constant
-                     * @type {number}
-                     */
-                    const currentGroupIndex = getGroupIndex(node, path);
-                    /**
-                     * @constant
-                     * @type {string}
-                     */
+                    const currentGroupIndex = getGroupIndex(currentSource, context);
                     const currentGroupName = groupNames[currentGroupIndex];
-                    /**
-                     * @constant
-                     * @type {number}
-                     */
-                    const previousGroupIndex = getGroupIndex(
-                        previousImportDeclaration,
-                        path
-                    );
-                    /**
-                     * @constant
-                     * @type {string}
-                     */
+                    const previousSource = previousImportDeclaration.source.value;
+                    const previousGroupIndex = getGroupIndex(previousSource, context);
                     const previousGroupName = groupNames[previousGroupIndex];
-                    /**
-                     * @constant
-                     * @type {number}
-                     */
-                    const linesBetween =
-                        node.loc.start.line - 1 - previousImportDeclaration.loc.end.line;
+                    const linesBetween = node.loc.start.line - 1 - previousImportDeclaration.loc.end.line;
 
                     if (currentGroupIndex < previousGroupIndex) {
                         context.report({
