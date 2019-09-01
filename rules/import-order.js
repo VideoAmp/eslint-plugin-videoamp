@@ -11,11 +11,11 @@ const reactPackages = ["react", "react-dom"];
 const firstPartyPackages = ["@preamp", "@videoamp", "@videoamp-private"];
 const thirdPartyDirectories = ["node_modules"];
 
-const getPackageName = source => source.match(/^[^\/]+/)[0];
-const isInDirectory = (source, path) => directory => path.includes(`${directory}/${source}`);
-const isReact = source => reactPackages.includes(getPackageName(source));
+const getPackageName = (source) => source.match(/^[^\/]+/)[0];
+const isInDirectory = (source, path) => (directory) => path.includes(`${directory}/${source}`);
+const isReact = (source) => reactPackages.includes(getPackageName(source));
 const isThirdParty = (source, path) => thirdPartyDirectories.some(isInDirectory(source, path)) && !isFirstParty(source);
-const isFirstParty = source => firstPartyPackages.includes(getPackageName(source));
+const isFirstParty = (source) => firstPartyPackages.includes(getPackageName(source));
 const isLocalNonJs = (source, path) => !thirdPartyDirectories.some(isInDirectory(source, path)) && Boolean(source.match(/\.\w+$/));
 const getGroupIndex = (source, context) => {
     const path = resolve(source, context) || "";
@@ -42,22 +42,20 @@ const fixerSwapImportDeclarations = (currentNode, previousNode, context) => ({ r
     const sourceCode = context.getSourceCode();
     const previousText = sourceCode.getText(previousNode);
     const currentText = sourceCode.getText(currentNode);
-    const { range: previousRange } = previousNode;
-    const { range: currentRange } = currentNode;
 
     return [
-        replaceTextRange(previousRange, currentText),
-        replaceTextRange(currentRange, previousText),
+        replaceTextRange(previousNode.range, currentText),
+        replaceTextRange(currentNode.range, previousText),
     ];
 };
-const fixerRemoveEmptyLines = (currentNode, previousNode) => ({ replaceTextRange }) => {
+const fixerRemoveEmptyLinesBetween = (currentNode, previousNode) => ({ replaceTextRange }) => {
     const { range: [_, previousEnd] } = previousNode;
     const { range: [currentStart] } = currentNode;
     const range = [previousEnd, currentStart];
 
     return replaceTextRange(range, '\n');
 };
-const fixerAddEmptyLine = (currentNode) => ({ insertTextBeforeRange }) => {
+const fixerAddEmptyLineBefore = (currentNode) => ({ insertTextBeforeRange }) => {
     const { range } = currentNode;
 
     return insertTextBeforeRange(range, '\n');
@@ -72,11 +70,11 @@ module.exports = {
         schema: [],
         type: "layout",
     },
-    create: context => {
+    create: (context) => {
         let previousImportDeclaration = null;
 
         return {
-            ImportDeclaration: node => {
+            ImportDeclaration: (node) => {
                 if (previousImportDeclaration) {
                     const currentSource = node.source.value;
                     const currentGroupIndex = getGroupIndex(currentSource, context);
@@ -84,7 +82,7 @@ module.exports = {
                     const previousSource = previousImportDeclaration.source.value;
                     const previousGroupIndex = getGroupIndex(previousSource, context);
                     const previousGroupName = groupNames[previousGroupIndex];
-                    const linesBetween = node.loc.start.line - 1 - previousImportDeclaration.loc.end.line;
+                    const emptyLinesBeforeCurrentNode = node.loc.start.line - 1 - previousImportDeclaration.loc.end.line;
 
                     if (currentGroupIndex < previousGroupIndex) {
                         context.report({
@@ -94,17 +92,17 @@ module.exports = {
                         });
                     }
 
-                    if (currentGroupIndex !== previousGroupIndex && linesBetween === 0) {
+                    if (currentGroupIndex !== previousGroupIndex && emptyLinesBeforeCurrentNode === 0) {
                         context.report({
-                            fix: fixerAddEmptyLine(node),
+                            fix: fixerAddEmptyLineBefore(node),
                             message: `There must be an empty line between ${currentGroupName} imports and ${previousGroupName} imports`,
                             node
                         });
                     }
 
-                    if (currentGroupIndex === previousGroupIndex && linesBetween !== 0) {
+                    if (currentGroupIndex === previousGroupIndex && emptyLinesBeforeCurrentNode !== 0) {
                         context.report({
-                            fix: fixerRemoveEmptyLines(node, previousImportDeclaration),
+                            fix: fixerRemoveEmptyLinesBetween(node, previousImportDeclaration),
                             message: `There must be no empty lines within the ${currentGroupName} import group`,
                             node
                         });
@@ -113,7 +111,7 @@ module.exports = {
                     if (currentGroupIndex === previousGroupIndex && currentSource < previousSource) {
                         context.report({
                             fix: fixerSwapImportDeclarations(node, previousImportDeclaration, context),
-                            message: `Import declarations within the ${currentGroupName} import group must be ordered alphabetically`,
+                            message: `Import declarations within the ${currentGroupName} import group must be ordered alphabetically by source`,
                             node
                         });
                     }
