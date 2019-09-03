@@ -1,12 +1,25 @@
 {
+  "author": "VideoAmp",
+  "bugs": {
+    "url": "https://github.com/VideoAmp/eslint-plugin-videoamp/issues"
+  },
   "dependencies": {
     "eslint-import-resolver-node": "^0.3.2",
     "eslint-module-utils": "^2.4.1"
   },
+  "homepage": "https://github.com/VideoAmp/eslint-plugin-videoamp#readme",
   "main": "index.js",
   "name": "eslint-plugin-videoamp",
   "peerDependencies": {
     "eslint": ">=5"
+  },
+  "private": true,
+  "publishConfig": {
+    "registry": "https://videoamp.jfrog.io/videoamp/api/npm/vamp-npm/"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/VideoAmp/eslint-plugin-videoamp.git"
   },
   "version": "0.1.0"
 }
