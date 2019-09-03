@@ -13,10 +13,6 @@
   "peerDependencies": {
     "eslint": ">=5"
   },
-  "private": true,
-  "publishConfig": {
-    "registry": "https://videoamp.jfrog.io/videoamp/api/npm/vamp-npm/"
-  },
   "repository": {
     "type": "git",
     "url": "git+https://github.com/VideoAmp/eslint-plugin-videoamp.git"
