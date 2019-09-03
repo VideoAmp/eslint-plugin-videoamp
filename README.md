@@ -3,7 +3,7 @@
 ## Usage
 
 ```
-yarn add --dev @videoamp/eslint-plugin-videoamp
+yarn add eslint-plugin-videoamp
 ```
 
 In your _eslintrc.json_:
