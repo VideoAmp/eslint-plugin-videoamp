@@ -17,5 +17,4 @@ In your _eslintrc.json_:
 
 ## Todo
 
-- create tests
-- support configuration
+-   support configuration
