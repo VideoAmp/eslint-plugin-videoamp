@@ -1,24 +1,36 @@
-const resolve = require("eslint-module-utils/resolve").default;
+const resolve = require('eslint-module-utils/resolve').default;
 
 const groupNames = [
-    "React",
-    "Third-party",
-    "First-party",
-    "Local JS",
-    "Local non-JS"
+    'React',
+    'Third-party',
+    'First-party',
+    'Local JS',
+    'Local non-JS',
 ];
-const reactPackages = ["react", "react-dom"];
-const firstPartyPackages = ["@preamp", "@videoamp", "@videoamp-private"];
-const thirdPartyDirectories = ["node_modules"];
 
-const getPackageName = (source) => source.match(/^[^\/]+/)[0];
-const isInDirectory = (source, path) => (directory) => path.includes(`${directory}/${source}`);
-const isReact = (source) => reactPackages.includes(getPackageName(source));
-const isThirdParty = (source, path) => thirdPartyDirectories.some(isInDirectory(source, path)) && !isFirstParty(source);
-const isFirstParty = (source) => firstPartyPackages.includes(getPackageName(source));
-const isLocalNonJs = (source, path) => !thirdPartyDirectories.some(isInDirectory(source, path)) && Boolean(source.match(/\.\w+$/));
+const reactPackages = ['react', 'react-dom'];
+const firstPartyPackages = ['@preamp', '@videoamp', '@videoamp-private'];
+const thirdPartyDirectories = ['node_modules'];
+
+const getPackageName = source => source.match(/^[^/]+/)[0];
+const hasFileExtension = source => Boolean(source.match(/\.\w+$/));
+const isFirstPartyPackage = source =>
+    firstPartyPackages.includes(getPackageName(source));
+const isInDirectory = (source, path) => directory =>
+    path.includes(`${directory}/${source}`);
+const isInThirdPartyDirectory = (source, path) =>
+    thirdPartyDirectories.some(isInDirectory(source, path));
+const isReactPackage = source => reactPackages.includes(getPackageName(source));
+
+const isReact = source => isReactPackage(source);
+const isFirstParty = source => isFirstPartyPackage(source);
+const isThirdParty = (source, path) =>
+    isInThirdPartyDirectory(source, path) && !isFirstParty(source);
+const isLocalNonJs = (source, path) =>
+    !isInThirdPartyDirectory(source, path) && hasFileExtension(source);
+
 const getGroupIndex = (source, context) => {
-    const path = resolve(source, context) || "";
+    const path = resolve(source, context) || '';
 
     if (isReact(source)) {
         return 0;
@@ -38,7 +50,10 @@ const getGroupIndex = (source, context) => {
 
     return 3;
 };
-const fixerSwapImportDeclarations = (currentNode, previousNode, context) => ({ replaceTextRange }) => {
+
+const fixerSwapImportDeclarations = (currentNode, previousNode, context) => ({
+    replaceTextRange,
+}) => {
     const sourceCode = context.getSourceCode();
     const previousText = sourceCode.getText(previousNode);
     const currentText = sourceCode.getText(currentNode);
@@ -48,14 +63,20 @@ const fixerSwapImportDeclarations = (currentNode, previousNode, context) => ({ r
         replaceTextRange(currentNode.range, previousText),
     ];
 };
-const fixerRemoveEmptyLinesBetween = (currentNode, previousNode) => ({ replaceTextRange }) => {
-    const { range: [_, previousEnd] } = previousNode;
-    const { range: [currentStart] } = currentNode;
+const fixerRemoveEmptyLinesBetween = (currentNode, previousNode) => ({
+    replaceTextRange,
+}) => {
+    const {
+        range: [_, previousEnd],
+    } = previousNode;
+    const {
+        range: [currentStart],
+    } = currentNode;
     const range = [previousEnd, currentStart];
 
     return replaceTextRange(range, '\n');
 };
-const fixerAddEmptyLineBefore = (currentNode) => ({ insertTextBeforeRange }) => {
+const fixerAddEmptyLineBefore = currentNode => ({ insertTextBeforeRange }) => {
     const { range } = currentNode;
 
     return insertTextBeforeRange(range, '\n');
@@ -66,59 +87,89 @@ module.exports = {
         docs: {
             recommended: true,
         },
-        fixable: "code",
+        fixable: 'code',
         schema: [],
-        type: "layout",
+        type: 'layout',
     },
-    create: (context) => {
+    create: context => {
         let previousImportDeclaration = null;
 
         return {
-            ImportDeclaration: (node) => {
+            ImportDeclaration: node => {
                 if (previousImportDeclaration) {
                     const currentSource = node.source.value;
-                    const currentGroupIndex = getGroupIndex(currentSource, context);
+                    const currentGroupIndex = getGroupIndex(
+                        currentSource,
+                        context
+                    );
                     const currentGroupName = groupNames[currentGroupIndex];
-                    const previousSource = previousImportDeclaration.source.value;
-                    const previousGroupIndex = getGroupIndex(previousSource, context);
+                    const previousSource =
+                        previousImportDeclaration.source.value;
+                    const previousGroupIndex = getGroupIndex(
+                        previousSource,
+                        context
+                    );
                     const previousGroupName = groupNames[previousGroupIndex];
-                    const emptyLinesBeforeCurrentNode = node.loc.start.line - 1 - previousImportDeclaration.loc.end.line;
+                    const emptyLinesBeforeCurrentNode =
+                        node.loc.start.line -
+                        1 -
+                        previousImportDeclaration.loc.end.line;
 
                     if (currentGroupIndex < previousGroupIndex) {
                         context.report({
-                            fix: fixerSwapImportDeclarations(node, previousImportDeclaration, context),
+                            fix: fixerSwapImportDeclarations(
+                                node,
+                                previousImportDeclaration,
+                                context
+                            ),
                             message: `${currentGroupName} imports must be declared before ${previousGroupName} imports`,
-                            node
+                            node,
                         });
                     }
 
-                    if (currentGroupIndex !== previousGroupIndex && emptyLinesBeforeCurrentNode === 0) {
+                    if (
+                        currentGroupIndex !== previousGroupIndex &&
+                        emptyLinesBeforeCurrentNode === 0
+                    ) {
                         context.report({
                             fix: fixerAddEmptyLineBefore(node),
                             message: `There must be an empty line between ${currentGroupName} imports and ${previousGroupName} imports`,
-                            node
+                            node,
                         });
                     }
 
-                    if (currentGroupIndex === previousGroupIndex && emptyLinesBeforeCurrentNode !== 0) {
+                    if (
+                        currentGroupIndex === previousGroupIndex &&
+                        emptyLinesBeforeCurrentNode !== 0
+                    ) {
                         context.report({
-                            fix: fixerRemoveEmptyLinesBetween(node, previousImportDeclaration),
+                            fix: fixerRemoveEmptyLinesBetween(
+                                node,
+                                previousImportDeclaration
+                            ),
                             message: `There must be no empty lines within the ${currentGroupName} import group`,
-                            node
+                            node,
                         });
                     }
 
-                    if (currentGroupIndex === previousGroupIndex && currentSource < previousSource) {
+                    if (
+                        currentGroupIndex === previousGroupIndex &&
+                        currentSource < previousSource
+                    ) {
                         context.report({
-                            fix: fixerSwapImportDeclarations(node, previousImportDeclaration, context),
+                            fix: fixerSwapImportDeclarations(
+                                node,
+                                previousImportDeclaration,
+                                context
+                            ),
                             message: `Import declarations within the ${currentGroupName} import group must be ordered alphabetically by source`,
-                            node
+                            node,
                         });
                     }
                 }
 
                 previousImportDeclaration = node;
-            }
+            },
         };
     },
 };

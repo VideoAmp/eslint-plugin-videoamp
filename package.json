@@ -1,21 +1,34 @@
 {
-  "author": "VideoAmp <geeks@videoamp.com>",
-  "bugs": {
-    "url": "https://github.com/VideoAmp/eslint-plugin-videoamp/issues"
-  },
-  "dependencies": {
-    "eslint-import-resolver-node": "^0.3.2",
-    "eslint-module-utils": "^2.4.1"
-  },
-  "homepage": "https://github.com/VideoAmp/eslint-plugin-videoamp#readme",
-  "main": "index.js",
-  "name": "eslint-plugin-videoamp",
-  "peerDependencies": {
-    "eslint": ">=5"
-  },
-  "repository": {
-    "type": "git",
-    "url": "git+https://github.com/VideoAmp/eslint-plugin-videoamp.git"
-  },
-  "version": "0.1.4"
+    "author": "VideoAmp <geeks@videoamp.com>",
+    "bugs": {
+        "url": "https://github.com/VideoAmp/eslint-plugin-videoamp/issues"
+    },
+    "dependencies": {
+        "eslint-import-resolver-node": "^0.3.2",
+        "eslint-module-utils": "^2.4.1"
+    },
+    "devDependencies": {
+        "eslint": "^6.3.0",
+        "eslint-config-prettier": "^6.2.0",
+        "eslint-plugin-prettier": "^3.1.0",
+        "jest": "^24.9.0",
+        "prettier": "^1.18.2"
+    },
+    "homepage": "https://github.com/VideoAmp/eslint-plugin-videoamp#readme",
+    "license": "Apache-2.0",
+    "main": "index.js",
+    "name": "eslint-plugin-videoamp",
+    "peerDependencies": {
+        "eslint": ">=5"
+    },
+    "prettier": "./prettier.config.js",
+    "repository": {
+        "type": "git",
+        "url": "git+https://github.com/VideoAmp/eslint-plugin-videoamp.git"
+    },
+    "scripts": {
+        "lint": "eslint ./ --ext js",
+        "test": "jest"
+    },
+    "version": "0.1.4"
 }
