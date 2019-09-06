@@ -51,6 +51,22 @@ const getGroupIndex = (source, context) => {
     return 3;
 };
 
+const fixerEmptyLinesBetween = (currentNode, previousNode, numberOfLines) => ({
+    replaceTextRange,
+}) => {
+    const {
+        range: [_, previousEnd],
+    } = previousNode;
+    const {
+        range: [currentStart],
+    } = currentNode;
+    const range = [previousEnd, currentStart];
+    const newLines = Array(numberOfLines + 1)
+        .fill('\n')
+        .join('');
+
+    return replaceTextRange(range, newLines);
+};
 const fixerSwapImportDeclarations = (currentNode, previousNode, context) => ({
     replaceTextRange,
 }) => {
@@ -62,24 +78,6 @@ const fixerSwapImportDeclarations = (currentNode, previousNode, context) => ({
         replaceTextRange(previousNode.range, currentText),
         replaceTextRange(currentNode.range, previousText),
     ];
-};
-const fixerRemoveEmptyLinesBetween = (currentNode, previousNode) => ({
-    replaceTextRange,
-}) => {
-    const {
-        range: [_, previousEnd],
-    } = previousNode;
-    const {
-        range: [currentStart],
-    } = currentNode;
-    const range = [previousEnd, currentStart];
-
-    return replaceTextRange(range, '\n');
-};
-const fixerAddEmptyLineBefore = currentNode => ({ insertTextBeforeRange }) => {
-    const { range } = currentNode;
-
-    return insertTextBeforeRange(range, '\n');
 };
 
 module.exports = {
@@ -129,11 +127,15 @@ module.exports = {
 
                     if (
                         currentGroupIndex !== previousGroupIndex &&
-                        emptyLinesBeforeCurrentNode === 0
+                        emptyLinesBeforeCurrentNode !== 1
                     ) {
                         context.report({
-                            fix: fixerAddEmptyLineBefore(node),
-                            message: `There must be an empty line between ${currentGroupName} imports and ${previousGroupName} imports`,
+                            fix: fixerEmptyLinesBetween(
+                                node,
+                                previousImportDeclaration,
+                                1
+                            ),
+                            message: `There must be one empty line between ${currentGroupName} imports and ${previousGroupName} imports`,
                             node,
                         });
                     }
@@ -143,9 +145,10 @@ module.exports = {
                         emptyLinesBeforeCurrentNode !== 0
                     ) {
                         context.report({
-                            fix: fixerRemoveEmptyLinesBetween(
+                            fix: fixerEmptyLinesBetween(
                                 node,
-                                previousImportDeclaration
+                                previousImportDeclaration,
+                                0
                             ),
                             message: `There must be no empty lines within the ${currentGroupName} import group`,
                             node,
