@@ -51,9 +51,13 @@ const getGroupIndex = (source, context) => {
     return 3;
 };
 
-const fixerEmptyLinesBetween = (currentNode, previousNode, numberOfLines) => ({
-    replaceTextRange,
-}) => {
+const fixerEmptyLinesBetween = (
+    context,
+    currentNode,
+    previousNode,
+    numberOfLines
+) => ({ replaceTextRange }) => {
+    const sourceCode = context.getSourceCode();
     const {
         range: [_, previousEnd],
     } = previousNode;
@@ -61,13 +65,19 @@ const fixerEmptyLinesBetween = (currentNode, previousNode, numberOfLines) => ({
         range: [currentStart],
     } = currentNode;
     const range = [previousEnd, currentStart];
+    const comments = sourceCode.getCommentsBefore(currentNode);
     const newLines = Array(numberOfLines + 1)
         .fill('\n')
+        .concat(
+            comments.map((_, i) =>
+                comments[i] ? `${sourceCode.getText(comments[i])}\n` : ''
+            )
+        )
         .join('');
 
     return replaceTextRange(range, newLines);
 };
-const fixerSwapImportDeclarations = (currentNode, previousNode, context) => ({
+const fixerSwapImportDeclarations = (context, currentNode, previousNode) => ({
     replaceTextRange,
 }) => {
     const sourceCode = context.getSourceCode();
@@ -90,6 +100,7 @@ module.exports = {
         type: 'layout',
     },
     create: context => {
+        const sourceCode = context.getSourceCode();
         let previousImportDeclaration = null;
 
         return {
@@ -108,17 +119,26 @@ module.exports = {
                         context
                     );
                     const previousGroupName = groupNames[previousGroupIndex];
+                    const comments = sourceCode.getCommentsBefore(node);
+                    const numberOfCommentLines = comments.reduce(
+                        (acc, comment) =>
+                            acc +
+                            (comment.loc.end.line - comment.loc.start.line) +
+                            1,
+                        0
+                    );
                     const emptyLinesBeforeCurrentNode =
                         node.loc.start.line -
                         1 -
-                        previousImportDeclaration.loc.end.line;
+                        previousImportDeclaration.loc.end.line -
+                        numberOfCommentLines;
 
                     if (currentGroupIndex < previousGroupIndex) {
                         context.report({
                             fix: fixerSwapImportDeclarations(
+                                context,
                                 node,
-                                previousImportDeclaration,
-                                context
+                                previousImportDeclaration
                             ),
                             message: `${currentGroupName} imports must be declared before ${previousGroupName} imports`,
                             node,
@@ -131,6 +151,7 @@ module.exports = {
                     ) {
                         context.report({
                             fix: fixerEmptyLinesBetween(
+                                context,
                                 node,
                                 previousImportDeclaration,
                                 1
@@ -146,6 +167,7 @@ module.exports = {
                     ) {
                         context.report({
                             fix: fixerEmptyLinesBetween(
+                                context,
                                 node,
                                 previousImportDeclaration,
                                 0
@@ -161,9 +183,9 @@ module.exports = {
                     ) {
                         context.report({
                             fix: fixerSwapImportDeclarations(
+                                context,
                                 node,
-                                previousImportDeclaration,
-                                context
+                                previousImportDeclaration
                             ),
                             message: `Import declarations within the ${currentGroupName} import group must be ordered alphabetically by source`,
                             node,
